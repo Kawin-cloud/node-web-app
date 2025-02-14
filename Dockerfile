@@ -1,11 +1,7 @@
-FROM node:20-alpine
+FROM public.ecr.aws/docker/library/node:20-alpine  # ECR Public image
 WORKDIR /usr/src/app
-
-COPY package.json .
+COPY package*.json ./
 RUN npm install
-
-# Copy ALL application files (including public/)
 COPY . .
-
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
