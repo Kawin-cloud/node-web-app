@@ -25,7 +25,8 @@ phases:
 
       - echo "Updating task definition..."
       - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition nodejs-webapp-task-def)
-      
+     
+
       - echo "Modifying task definition..."
       - NEW_DEFINITION=$(echo $TASK_DEFINITION | jq '
           .taskDefinition |
