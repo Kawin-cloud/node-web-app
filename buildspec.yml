@@ -15,6 +15,7 @@ phases:
       - TIMESTAMP=$(date +%Y%m%d%H%M%S)
       - IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP}
 
+
   build:
     commands:
       - echo "Building Docker image..."
