@@ -1,0 +1,25 @@
+# Ignore node_modules directory (contains dependencies)
+node_modules/
+
+# Ignore backup files (files ending with _bk)
+*_bk.*
+
+# Ignore Docker-related temporary files
+0f1cc7890bb1
+23114c7babf6
+3a863f2dc340
+4c3a20f8ec39
+82c55073de21
+a2186c3fdd2a
+da4195d56439
+ed325b1c529d
+
+# Ignore package-lock.json (optional, depending on your workflow)
+package-lock.json
+
+# Ignore OS-specific files
+.DS_Store
+
+# Ignore logs and runtime files
+Removed
+Running
