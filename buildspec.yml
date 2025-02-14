@@ -36,7 +36,8 @@ phases:
             .requiresAttributes,
             .compatibilities,
             .registeredAt,
-            .registeredBy
+            .registeredBy,
+            .registeredThrough
           ) |
           .containerDefinitions[0].image = "203918847581.dkr.ecr.us-east-1.amazonaws.com/ecs-node-cicd:'"$IMAGE_TAG"'"')
       
@@ -47,6 +48,7 @@ phases:
       - aws ecs update-service \
           --cluster ecs-node-cicd-cluster \
           --service ecs-nodejs-service \
+          --task-definition nodejs-webapp-task-def \
           --force-new-deployment \
           --region us-east-1
 
