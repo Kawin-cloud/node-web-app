@@ -18,15 +18,12 @@ phases:
     commands:
       - echo "Pushing image to ECR..."
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
-      - echo "Creating deployment artifacts..."
-      - mkdir -p build
-      - printf '[{"name":"ecs-nodejs-container","imageUri":"%s"}]' "$ECR_REPOSITORY_URI:$IMAGE_TAG" > build/imagedefinitions.json
       - echo "Updating task definition..."
-      - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION)
+      - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION --region $AWS_DEFAULT_REGION)
       - echo "Modifying task definition..."
-      - NEW_DEFINITION=$(echo "$TASK_DEFINITION" | jq ' .taskDefinition | del( .taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .registeredThrough ) | .containerDefinitions[0].image = "'"$ECR_REPOSITORY_URI:$IMAGE_TAG"'"')
+      - NEW_DEFINITION=$(echo "$TASK_DEFINITION" | jq '.taskDefinition | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .registeredThrough) | .containerDefinitions[0].image = "'"$ECR_REPOSITORY_URI:$IMAGE_TAG"'"')
       - echo "Registering new task definition..."
-      - aws ecs register-task-definition --cli-input-json "$NEW_DEFINITION"
+      - aws ecs register-task-definition --cli-input-json "$NEW_DEFINITION" --region $AWS_DEFAULT_REGION
       - echo "Triggering ECS deployment..."
       - aws ecs update-service --cluster $ECS_CLUSTER_NAME --service $ECS_SERVICE_NAME --task-definition $ECS_TASK_DEFINITION --force-new-deployment --region $AWS_DEFAULT_REGION
 
