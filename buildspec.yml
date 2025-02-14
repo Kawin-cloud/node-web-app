@@ -25,8 +25,7 @@ phases:
     commands:
       - echo "Pushing image to ECR..."
       - docker push $ECR_REPO_URI:$IMAGE_TAG
-      
-
+ 
       - echo "Creating imagedefinitions.json..."
       - mkdir -p build
       - printf '[{"name":"ecs-nodejs-container","imageUri":"%s"}]' "$ECR_REPO_URI:$IMAGE_TAG" > build/imagedefinitions.json
