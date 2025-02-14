@@ -1,5 +1,4 @@
 version: 0.2
-
 env:
   variables:
     ECR_REPO_URI: "203918847581.dkr.ecr.us-east-1.amazonaws.com/ecs-node-cicd"
@@ -8,36 +7,26 @@ env:
 phases:
   pre_build:
     commands:
-      # Login to ECR
-      - echo "Logging in to Amazon ECR..."
+      - echo "Logging in to ECR..."
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI
-
-      # Generate image tags
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - TIMESTAMP=$(date +%Y%m%d%H%M%S)
-      - IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP}
+      - IMAGE_TAG=${COMMIT_HASH}-$(date +%Y%m%d%H%M%S)
 
   build:
     commands:
-      # Build with full ECR URI and cache from ECR
       - echo "Building Docker image..."
       - docker build -t $ECR_REPO_URI:$IMAGE_TAG .
-
-      # Tag as latest for easier reference
-      - echo "Tagging image as latest..."
       - docker tag $ECR_REPO_URI:$IMAGE_TAG $ECR_REPO_URI:latest
 
   post_build:
     commands:
-      # Push both tags to ECR
       - echo "Pushing images to ECR..."
       - docker push $ECR_REPO_URI:$IMAGE_TAG
       - docker push $ECR_REPO_URI:latest
-
-      # Create ECS deployment file
       - echo "Creating imagedefinitions.json..."
-      - printf '[{"name":"ecs-nodejs-container","imageUri":"%s:%s"}]' $ECR_REPO_URI $IMAGE_TAG > imagedefinitions.json
+      - mkdir -p build
+      - printf '[{"name":"ecs-nodejs-container","imageUri":"%s:%s"}]' $ECR_REPO_URI $IMAGE_TAG > build/imagedefinitions.json
 
 artifacts:
   files:
-    - imagedefinitions.json
+    - build/imagedefinitions.json
