@@ -1,10 +1,11 @@
 version: 0.2
+
 env:
   variables:
-    ECR_REPO_URI: "203918847581.dkr.ecr.us-east-1.amazonaws.com/ecs-node-cicd"
     AWS_REGION: "us-east-1"
-    ECS_CLUSTER: "ecs-node-cicd-cluster"    # Replace with your cluster name
-    ECS_SERVICE: "ecs-nodejs-service"    # Replace with your service name
+    ECR_REPO_URI: "203918847581.dkr.ecr.us-east-1.amazonaws.com/ecs-node-cicd"
+    ECS_CLUSTER: "ecs-node-cicd-cluster"
+    ECS_SERVICE: "ecs-nodejs-service"
 
 phases:
   pre_build:
@@ -15,22 +16,33 @@ phases:
       - TIMESTAMP=$(date +%Y%m%d%H%M%S)
       - IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP}
 
-
   build:
     commands:
       - echo "Building Docker image..."
-      - docker build -t $ECR_REPO_URI:$IMAGE_TAG .
+      - docker build --pull --no-cache -t $ECR_REPO_URI:$IMAGE_TAG .
 
   post_build:
     commands:
       - echo "Pushing image to ECR..."
       - docker push $ECR_REPO_URI:$IMAGE_TAG
-      - echo "Forcing ECS deployment..."
-      - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment --region $AWS_REGION
+      
       - echo "Creating imagedefinitions.json..."
       - mkdir -p build
-      - printf '[{"name":"ecs-nodejs-container","imageUri":"%s:%s"}]' $ECR_REPO_URI $IMAGE_TAG > build/imagedefinitions.json
+      - printf '[{"name":"ecs-nodejs-container","imageUri":"%s"}]' "$ECR_REPO_URI:$IMAGE_TAG" > build/imagedefinitions.json
+
+      - echo "Updating task definition..."
+      - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition nodejs-webapp-task-def)
+      - NEW_DEFINITION=$(echo $TASK_DEFINITION | jq --arg IMAGE "$ECR_REPO_URI:$IMAGE_TAG" '.taskDefinition | .containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities)')
+      - aws ecs register-task-definition --cli-input-json "$NEW_DEFINITION"
+
+      - echo "Forcing ECS deployment..."
+      - aws ecs update-service \
+          --cluster $ECS_CLUSTER \
+          --service $ECS_SERVICE \
+          --force-new-deployment \
+          --region $AWS_REGION
 
 artifacts:
   files:
     - build/imagedefinitions.json
+  discard-paths: yes
