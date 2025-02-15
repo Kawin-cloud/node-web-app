@@ -3,5 +3,21 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
+      - echo "Starting pre-build phase..."
+      - echo "Testing basic commands execution in CodeBuild"
+  
+  build:
+    commands:
+      - echo "Building process starts here..."
+      - echo "Simulating build step"
+  
+  post_build:
+    commands:
+      - echo "Post-build phase completed successfully!"
+      - echo "Pipeline setup is working fine."
+
+artifacts:
+  files:
+    - "**/*"
+  discard-paths: yes
 
