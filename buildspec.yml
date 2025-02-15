@@ -2,9 +2,9 @@ version: 0.2
 
 env:
   variables:
-    AWS_REGION: "us-east-1"  # Update to your AWS region
-    AWS_ACCOUNT_ID: "203918847581"  # Your AWS account ID
-    ECR_REPOSITORY_NAME: "ecs-node-cicd"  # Your ECR repository name
+    AWS_REGION: "us-east-1"
+    AWS_ACCOUNT_ID: "203918847581"
+    ECR_REPOSITORY_NAME: "ecs-node-cicd"
     ECR_REPOSITORY: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY_NAME}"
 
 phases:
