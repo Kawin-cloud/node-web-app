@@ -16,6 +16,7 @@ phases:
       - echo "Post-build phase completed successfully!"
       - echo "Pipeline setup is working fine."
 
+
 artifacts:
   files:
     - "**/*"
