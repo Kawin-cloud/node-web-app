@@ -1,37 +1,33 @@
+---
 version: 0.2
-
 phases:
   install:
     runtime-versions:
-      docker: 20  # Ensures Docker is installed
-
+      docker: 20
   pre_build:
     commands:
       - echo "Retrieving AWS account ID..."
-      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output
+        text)
       - echo "Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-
+      - aws ecr get-login-password --region "$AWS_REGION" | docker login
+        --username AWS --password-stdin
+        "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
       - echo "Setting up environment variables..."
-      - IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}"  # Use commit hash or default to 'latest'
+      - IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}"
       - REPO_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY"
-
       - echo "Image tag: $IMAGE_TAG"
       - echo "Repository URI: $REPO_URI"
-
   build:
     commands:
       - echo "Checking current directory..."
-      - pwd  # Print working directory
+      - pwd
       - echo "Listing files..."
-      - ls -la  # Ensure files are present
-
-      - if [ ! -f "Dockerfile" ]; then echo "ERROR: Dockerfile not found!"; exit 1; fi
-
+      - ls -la
+      - 'if [ ! -f "Dockerfile" ]; then echo "ERROR': Dockerfile not found!"; exit 1; fi
       - echo "Building Docker image..."
-      - docker build -t "$REPO_URI:$IMAGE_TAG" . || { echo "Docker build failed"; exit 1; }
-
+      - docker build -t "$REPO_URI:$IMAGE_TAG" . || { echo "Docker build
+        failed"; exit 1; }
       - echo "Verifying Docker images..."
       - docker images
 
