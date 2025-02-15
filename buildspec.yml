@@ -1,33 +1,27 @@
 version: 0.2
 
+env:
+  variables:
+    AWS_REGION: "us-east-1"  # Update this to your region
+    ECR_REPOSITORY: "ecs-node-cicd"  # Update this with your repository name
+
 phases:
   pre_build:
     commands:
-      - echo "Checking required environment variables..."
-      - if [[ -z "$AWS_REGION" || -z "$ECR_REPOSITORY" ]]; then echo "ERROR: AWS_REGION or ECR_REPOSITORY is missing"; exit 1; fi
-
-      - echo "Retrieving AWS account ID..."
-      - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-
-      - echo "Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-
-      - echo "Setting up environment variables..."
-      - export IMAGE_TAG="$CODEBUILD_RESOLVED_SOURCE_VERSION"
-      - export REPO_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY"
-
-      - echo "Image tag: $IMAGE_TAG"
-      - echo "Repository URI: $REPO_URI"
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - ECR_LOGIN=$(aws ecr get-login-password --region $AWS_REGION)
+      - echo $ECR_LOGIN | docker login --username AWS --password-stdin $ECR_REPOSITORY
 
   build:
     commands:
-      - echo "Current Directory: $(pwd)"
-      - echo "Listing files in the current directory..."
-      - ls -la
+      - echo Building the Docker image...
+      - docker build -t $ECR_REPOSITORY .
+      - docker tag $ECR_REPOSITORY:latest $ECR_REPOSITORY:latest
 
-      - echo "Building Docker image..."
-      - docker build -t "$REPO_URI:$IMAGE_TAG" .
-
-      - echo "Listing Docker images..."
-      - docker images
+  post_build:
+    commands:
+      - echo Pushing the Docker image to ECR...
+      - docker push $ECR_REPOSITORY:latest
+      - echo Build completed successfully.
 
