@@ -2,26 +2,29 @@ version: 0.2
 
 env:
   variables:
-    AWS_REGION: "us-east-1"  # Update this to your region
-    ECR_REPOSITORY: "ecs-node-cicd"  # Update this with your repository name
+    AWS_REGION: "us-east-1"  # Update to your AWS region
+    AWS_ACCOUNT_ID: "203918847581"  # Your AWS account ID
+    ECR_REPOSITORY_NAME: "ecs-node-cicd"  # Your ECR repository name
+    ECR_REPOSITORY: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY_NAME}"
 
 phases:
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
+      - echo "Logging in to Amazon ECR..."
+      - echo "AWS_REGION: $AWS_REGION"
+      - echo "ECR_REPOSITORY: $ECR_REPOSITORY"
       - aws --version
-      - ECR_LOGIN=$(aws ecr get-login-password --region $AWS_REGION)
-      - echo $ECR_LOGIN | docker login --username AWS --password-stdin $ECR_REPOSITORY
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY
 
   build:
     commands:
-      - echo Building the Docker image...
+      - echo "Building the Docker image..."
       - docker build -t $ECR_REPOSITORY .
       - docker tag $ECR_REPOSITORY:latest $ECR_REPOSITORY:latest
 
   post_build:
     commands:
-      - echo Pushing the Docker image to ECR...
+      - echo "Pushing the Docker image to ECR..."
       - docker push $ECR_REPOSITORY:latest
-      - echo Build completed successfully.
+      - echo "Build completed successfully."
 
