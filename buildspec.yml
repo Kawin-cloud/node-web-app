@@ -7,7 +7,14 @@ phases:
       - echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
       - echo "ECR_REPOSITORY_URI: $ECR_REPOSITORY_URI"
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
-      - echo "Generating image tag..."
+
+      # Debugging: Check if environment variables exist
+      - echo "CODEBUILD_RESOLVED_SOURCE_VERSION: $CODEBUILD_RESOLVED_SOURCE_VERSION"
+      - echo "ECS_TASK_DEFINITION: $ECS_TASK_DEFINITION"
+      - echo "ECS_CLUSTER_NAME: $ECS_CLUSTER_NAME"
+      - echo "ECS_SERVICE_NAME: $ECS_SERVICE_NAME"
+
+      # Generating image tag with separate commands
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - TIMESTAMP=$(date +%Y%m%d%H%M%S)
       - IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP}
@@ -25,12 +32,18 @@ phases:
       - echo "Creating deployment artifacts..."
       - mkdir -p build
       - printf '[{"name":"ecs-nodejs-container","imageUri":"%s"}]' "$ECR_REPOSITORY_URI:$IMAGE_TAG" > build/imagedefinitions.json
+
       - echo "Updating task definition..."
       - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION)
+      - echo "TASK_DEFINITION response: $TASK_DEFINITION"
+
       - echo "Modifying task definition..."
-      - NEW_DEFINITION=$(echo "$TASK_DEFINITION" | jq '.taskDefinition | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .registeredThrough) | .containerDefinitions[0].image = "'$ECR_REPOSITORY_URI:$IMAGE_TAG'"')
+      - NEW_DEFINITION=$(echo "$TASK_DEFINITION" | jq ' .taskDefinition | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .registeredThrough) | .containerDefinitions[0].image = "'$ECR_REPOSITORY_URI:$IMAGE_TAG'"')
+      - echo "NEW_DEFINITION: $NEW_DEFINITION"
+
       - echo "Registering new task definition..."
       - aws ecs register-task-definition --cli-input-json "$NEW_DEFINITION"
+
       - echo "Triggering ECS deployment..."
       - aws ecs update-service --cluster $ECS_CLUSTER_NAME --service $ECS_SERVICE_NAME --task-definition $ECS_TASK_DEFINITION --force-new-deployment --region $AWS_DEFAULT_REGION
 
