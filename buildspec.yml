@@ -1,6 +1,11 @@
+version: 0.2
+
+phases:
   pre_build:
     commands:
       - echo "Logging in to ECR..."
-      - export AWS_DEFAULT_REGION=us-east-1  # Set the region if it's not available
-      - echo "AWS_DEFAULT_REGION is set to: $AWS_DEFAULT_REGION"
+      - echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
+      - echo "ECR_REPOSITORY_URI: $ECR_REPOSITORY_URI"
+      - echo "Checking AWS CLI version..."
+      - aws --version
 
