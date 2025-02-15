@@ -1,32 +1,37 @@
-version: 0.2
-
-env:
-  variables:
-    AWS_REGION: "us-east-1"
-    ECR_REGISTRY: "203918847581.dkr.ecr.us-east-1.amazonaws.com"
-    ECR_REPOSITORY: "ecs-node-cicd"
+ersion: 0.2
 
 phases:
   pre_build:
     commands:
-      - echo "Logging in to Amazon ECR..."
-      - echo "AWS_REGION: $AWS_REGION"
-      - echo "ECR_REGISTRY: $ECR_REGISTRY"
-      - echo "ECR_REPOSITORY: $ECR_REPOSITORY"
-      - aws --version
-      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+      - echo "Logging in to ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - TIMESTAMP=$(date +%Y%m%d%H%M%S)
+      - IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP}
 
   build:
     commands:
-      - echo "Building the Docker image..."
-      - IMAGE_TAG=$(date +%Y%m%d%H%M%S)
-      - docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-      - docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      - echo "Building Docker image..."
+      - docker build --pull --no-cache -t $ECR_REPOSITORY_URI:$IMAGE_TAG .
 
   post_build:
     commands:
-      - echo "Pushing the Docker image to Amazon ECR..."
-      - docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-      - docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-      - echo "Build completed successfully."
+      - echo "Pushing image to ECR..."
+      - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+      - echo "Creating deployment artifacts..."
+      - mkdir -p build
+      - printf '[{"name":"ecs-nodejs-container","imageUri":"%s"}]' "$ECR_REPOSITORY_URI:$IMAGE_TAG" > build/imagedefinitions.json
+      - echo "Updating task definition..."
+      - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION)
+      - echo "Modifying task definition..."
+      - NEW_DEFINITION=$(echo "$TASK_DEFINITION" | jq ' .taskDefinition | del( .taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .registeredThrough ) | .containerDefinitions[0].image = "'"$ECR_REPOSITORY_URI:$IMAGE_TAG"'"')
+      - echo "Registering new task definition..."
+      - aws ecs register-task-definition --cli-input-json "$NEW_DEFINITION"
+      - echo "Triggering ECS deployment..."
+      - aws ecs update-service --cluster $ECS_CLUSTER_NAME --service $ECS_SERVICE_NAME --task-definition $ECS_TASK_DEFINITION --force-new-deployment --region $AWS_DEFAULT_REGION
+
+artifacts:
+  files:
+    - build/imagedefinitions.json
+  discard-paths: yes
 
