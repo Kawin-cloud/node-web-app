@@ -1,42 +1,28 @@
 version: 0.2
 
-env:
-  variables:
-    AWS_REGION: "us-east-1"  # Change to your AWS region
-    ECR_REPOSITORY: "your-ecr-repo-name"  # Replace with your ECR repository name
-
 phases:
-  install:
-    runtime-versions:
-      docker: 20  # Ensures Docker is installed
-
   pre_build:
     commands:
-      - echo "Retrieving AWS account ID..."
-      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-      - echo "AWS Account ID: $AWS_ACCOUNT_ID"
+      - export AWS_REGION="us-east-1"  # Set your AWS region
+      - export ECR_REPOSITORY="your-repository-name"  # Set your repository name
+      - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+      - echo "AWS_REGION: $AWS_REGION"
+      - echo "ECR_REPOSITORY: $ECR_REPOSITORY"
 
       - echo "Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com" || { echo "ECR login failed"; exit 1; }
+      - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 
-      - echo "Setting up environment variables..."
-      - IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}"  # Use commit hash or default to 'latest'
-      - REPO_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY"
+      - export IMAGE_TAG=$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - export REPO_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY"
+
       - echo "Image tag: $IMAGE_TAG"
       - echo "Repository URI: $REPO_URI"
 
   build:
     commands:
-      - echo "Checking current directory..."
-      - pwd  # Print working directory
-      - echo "Listing files..."
-      - ls -la  # Ensure files are present
+      - echo "Current Directory: $(pwd)"
+      - ls -la
+      - docker build -t "$REPO_URI:$IMAGE_TAG" .
+      - docker images
 
-      - echo "Checking for Dockerfile..."
-      - if [ ! -f "Dockerfile" ]; then echo "ERROR: Dockerfile not found!"; exit 1; fi
-
-      - echo "Building Docker image..."
-      - docker build -t "$REPO_URI:$IMAGE_TAG" . || { echo "Docker build failed"; exit 1; }
-
-      - echo "Verifying Docker images..."
-      - docker images || { echo "Failed to list Docker images"; exit 1; }
