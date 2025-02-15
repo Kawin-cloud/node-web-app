@@ -40,3 +40,4 @@ phases:
 
       - echo "Verifying Docker images..."
       - docker images || { echo "Failed to list Docker images"; exit 1; }
+
