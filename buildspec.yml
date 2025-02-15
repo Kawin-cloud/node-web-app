@@ -18,13 +18,13 @@ phases:
 
   build:
     commands:
-      - echo "Current Directory: $(pwd)"  # Print the current working directory
+      - echo "Current Directory: $(pwd)"
       - echo "Listing files in the current directory..."
-      - ls -la  # List all files to confirm Dockerfile is present
+      - ls -la
 
       - echo "Building Docker image..."
       - docker build -t $REPO_URI:$IMAGE_TAG . || { echo "Docker build failed"; exit 1; }
 
       - echo "Listing Docker images..."
-      - docker images  # Display the list of built images
+      - docker images
 
