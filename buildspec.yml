@@ -3,51 +3,37 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo "========== PRE-BUILD PHASE START =========="
       - echo "Logging in to ECR..."
       - echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
       - echo "ECR_REPOSITORY_URI: $ECR_REPOSITORY_URI"
-      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
-      - echo "ECR Login successful!"
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
       - echo "Generating image tag..."
-      - export COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - export TIMESTAMP=$(date +%Y%m%d%H%M%S)
-      - export IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP}
+      - export COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7) && export TIMESTAMP=$(date +%Y%m%d%H%M%S) && export IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP}
       - echo "Generated IMAGE_TAG: $IMAGE_TAG"
-      - echo "========== PRE-BUILD PHASE END =========="
 
   build:
     commands:
-      - echo "========== BUILD PHASE START =========="
       - echo "Building Docker image..."
       - docker build --pull --no-cache -t $ECR_REPOSITORY_URI:$IMAGE_TAG .
       - echo "Docker image build completed successfully!"
-      - echo "Verifying Docker image..."
-      - docker images | grep $ECR_REPOSITORY_URI
-      - echo "========== BUILD PHASE END =========="
+      - echo "Listing Docker images..."
+      - docker images | grep $ECR_REPOSITORY_URI || echo "No images found!"
 
   post_build:
     commands:
-      - echo "========== POST-BUILD PHASE START =========="
       - echo "Pushing image to ECR..."
       - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
-      - echo "Docker image pushed successfully!"
       - echo "Creating deployment artifacts..."
       - mkdir -p build
       - printf '[{"name":"ecs-nodejs-container","imageUri":"%s"}]' "$ECR_REPOSITORY_URI:$IMAGE_TAG" > build/imagedefinitions.json
       - echo "Updating task definition..."
       - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION)
-      - echo "Existing task definition fetched successfully!"
       - echo "Modifying task definition..."
-      - NEW_DEFINITION=$(echo "$TASK_DEFINITION" | jq ' .taskDefinition | del( .taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .registeredThrough ) | .containerDefinitions[0].image = "'$ECR_REPOSITORY_URI:$IMAGE_TAG'"')
-      - echo "New task definition prepared!"
+      - NEW_DEFINITION=$(echo "$TASK_DEFINITION" | jq '.taskDefinition | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .registeredThrough) | .containerDefinitions[0].image = "'$ECR_REPOSITORY_URI:$IMAGE_TAG'"')
       - echo "Registering new task definition..."
       - aws ecs register-task-definition --cli-input-json "$NEW_DEFINITION"
-      - echo "Task definition updated successfully!"
       - echo "Triggering ECS deployment..."
       - aws ecs update-service --cluster $ECS_CLUSTER_NAME --service $ECS_SERVICE_NAME --task-definition $ECS_TASK_DEFINITION --force-new-deployment --region $AWS_DEFAULT_REGION
-      - echo "ECS deployment triggered!"
-      - echo "========== POST-BUILD PHASE END =========="
 
 artifacts:
   files:
