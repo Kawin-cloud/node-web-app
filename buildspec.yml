@@ -3,7 +3,9 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo "Testing Git connectivity..."
-      - git clone https://github.com/Kawin-cloud/node-web-app.git test-repo
-      - ls -lah test-repo
+      - echo "Testing CodeBuild YAML parsing"
+
+artifacts:
+  files:
+    - "**/*"
 
