@@ -7,9 +7,11 @@ phases:
       - echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
       - echo "ECR_REPOSITORY_URI: $ECR_REPOSITORY_URI"
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
+      - echo "Generating image tag..."
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - TIMESTAMP=$(date +%Y%m%d%H%M%S)
       - IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP}
+      - echo "Generated IMAGE_TAG: $IMAGE_TAG"
 
   build:
     commands:
@@ -26,7 +28,7 @@ phases:
       - echo "Updating task definition..."
       - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION)
       - echo "Modifying task definition..."
-      - NEW_DEFINITION=$(echo "$TASK_DEFINITION" | jq ' .taskDefinition | del( .taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .registeredThrough ) | .containerDefinitions[0].image = "'$ECR_REPOSITORY_URI:$IMAGE_TAG'"')
+      - NEW_DEFINITION=$(echo "$TASK_DEFINITION" | jq '.taskDefinition | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .registeredThrough) | .containerDefinitions[0].image = "'$ECR_REPOSITORY_URI:$IMAGE_TAG'"')
       - echo "Registering new task definition..."
       - aws ecs register-task-definition --cli-input-json "$NEW_DEFINITION"
       - echo "Triggering ECS deployment..."
