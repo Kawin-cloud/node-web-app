@@ -4,21 +4,6 @@ phases:
   pre_build:
     commands:
       - echo "Starting pre-build phase..."
-      - echo "Testing basic commands execution in CodeBuild"
-  
-  build:
-    commands:
-      - echo "Building process starts here..."
-      - echo "Simulating build step"
-  
-  post_build:
-    commands:
-      - echo "Post-build phase completed successfully!"
-      - echo "Pipeline setup is working fine."
-
-
-artifacts:
-  files:
-    - "**/*"
-  discard-paths: yes
+      - env | grep AWS_DEFAULT_REGION
+      - env | grep ECR_REPOSITORY_URI
 
