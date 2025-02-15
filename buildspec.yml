@@ -20,6 +20,7 @@ phases:
       - docker build -t $ECR_REPOSITORY:latest .
       - docker tag $ECR_REPOSITORY:latest $ECR_REPOSITORY:$(date +%Y%m%d%H%M%S)
 
+
   post_build:
     commands:
       - echo "Pushing the Docker image to Amazon ECR..."
