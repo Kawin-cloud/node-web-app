@@ -3,28 +3,30 @@ version: 0.2
 env:
   variables:
     AWS_REGION: "us-east-1"
-    ECR_REPOSITORY: "203918847581.dkr.ecr.us-east-1.amazonaws.com/ecs-node-cicd"
+    ECR_REGISTRY: "203918847581.dkr.ecr.us-east-1.amazonaws.com"
+    ECR_REPOSITORY: "ecs-node-cicd"
 
 phases:
   pre_build:
     commands:
       - echo "Logging in to Amazon ECR..."
       - echo "AWS_REGION: $AWS_REGION"
+      - echo "ECR_REGISTRY: $ECR_REGISTRY"
       - echo "ECR_REPOSITORY: $ECR_REPOSITORY"
       - aws --version
-      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
 
   build:
     commands:
       - echo "Building the Docker image..."
-      - docker build -t $ECR_REPOSITORY:latest .
-      - docker tag $ECR_REPOSITORY:latest $ECR_REPOSITORY:$(date +%Y%m%d%H%M%S)
-
+      - IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+      - docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+      - docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
   post_build:
     commands:
       - echo "Pushing the Docker image to Amazon ECR..."
-      - docker push $ECR_REPOSITORY:latest
-      - docker push $ECR_REPOSITORY:$(date +%Y%m%d%H%M%S)
+      - docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+      - docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
       - echo "Build completed successfully."
 
