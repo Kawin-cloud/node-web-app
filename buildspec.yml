@@ -1,8 +1,6 @@
-version: 0.2
-
-phases:
   pre_build:
     commands:
-      - echo "Starting pre-build phase..."
-      - echo "Checking AWS region: $AWS_DEFAULT_REGION"
+      - echo "Logging in to ECR..."
+      - export AWS_DEFAULT_REGION=us-east-1  # Set the region if it's not available
+      - echo "AWS_DEFAULT_REGION is set to: $AWS_DEFAULT_REGION"
 
