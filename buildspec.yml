@@ -3,31 +3,28 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo "Logging in to ECR..."
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
-      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - TIMESTAMP=$(date +%Y%m%d%H%M%S)
-      - IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP}
+      - echo "Retrieving AWS account ID..."
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com || { echo "ECR login failed"; exit 1; }
+
+      - echo "Setting up environment variables..."
+      - IMAGE_TAG=$CODEBUILD_RESOLVED_SOURCE_VERSION  # Use Git commit hash as image tag
+      - REPO_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY
+
+      - echo "Image tag: $IMAGE_TAG"
+      - echo "Repository URI: $REPO_URI"
 
   build:
     commands:
+      - echo "Current Directory: $(pwd)"  # Print the current working directory
+      - echo "Listing files in the current directory..."
+      - ls -la  # List all files to confirm Dockerfile is present
+
       - echo "Building Docker image..."
-      - docker build --pull --no-cache -t $ECR_REPOSITORY_URI:$IMAGE_TAG .
+      - docker build -t $REPO_URI:$IMAGE_TAG . || { echo "Docker build failed"; exit 1; }
 
-  post_build:
-    commands:
-      - echo "Pushing image to ECR..."
-      - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
-      - echo "Updating task definition..."
-      - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION --region $AWS_DEFAULT_REGION)
-      - echo "Modifying task definition..."
-      - NEW_DEFINITION=$(echo "$TASK_DEFINITION" | jq '.taskDefinition | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .registeredThrough) | .containerDefinitions[0].image = "'"$ECR_REPOSITORY_URI:$IMAGE_TAG"'"')
-      - echo "Registering new task definition..."
-      - aws ecs register-task-definition --cli-input-json "$NEW_DEFINITION" --region $AWS_DEFAULT_REGION
-      - echo "Triggering ECS deployment..."
-      - aws ecs update-service --cluster $ECS_CLUSTER_NAME --service $ECS_SERVICE_NAME --task-definition $ECS_TASK_DEFINITION --force-new-deployment --region $AWS_DEFAULT_REGION
+      - echo "Listing Docker images..."
+      - docker images  # Display the list of built images
 
-artifacts:
-  files:
-    - build/imagedefinitions.json
-  discard-paths: yes
