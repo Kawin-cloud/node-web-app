@@ -4,6 +4,12 @@ phases:
   pre_build:
     commands:
       - echo "Starting pre-build phase..."
-      - echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
-      - echo "ECR_REPOSITORY_URI: $ECR_REPOSITORY_URI"
+      - env | grep AWS_DEFAULT_REGION
+      - env | grep ECR_REPOSITORY_URI
+
+  build:
+    commands:
+      - echo "Starting build phase..."
+      - echo "AWS_DEFAULT_REGION in build: ${AWS_DEFAULT_REGION:-NOT_SET}"
+      - echo "ECR_REPOSITORY_URI in build: ${ECR_REPOSITORY_URI:-NOT_SET}"
 
