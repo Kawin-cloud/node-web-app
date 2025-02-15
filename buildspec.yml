@@ -3,9 +3,7 @@ version: 0.2
 env:
   variables:
     AWS_REGION: "us-east-1"
-    AWS_ACCOUNT_ID: "203918847581"
-    ECR_REPOSITORY_NAME: "ecs-node-cicd"
-    ECR_REPOSITORY: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY_NAME}"
+    ECR_REPOSITORY: "203918847581.dkr.ecr.us-east-1.amazonaws.com/ecs-node-cicd"
 
 phases:
   pre_build:
@@ -19,12 +17,13 @@ phases:
   build:
     commands:
       - echo "Building the Docker image..."
-      - docker build -t $ECR_REPOSITORY .
-      - docker tag $ECR_REPOSITORY:latest $ECR_REPOSITORY:latest
+      - docker build -t $ECR_REPOSITORY:latest .
+      - docker tag $ECR_REPOSITORY:latest $ECR_REPOSITORY:$(date +%Y%m%d%H%M%S)
 
   post_build:
     commands:
-      - echo "Pushing the Docker image to ECR..."
+      - echo "Pushing the Docker image to Amazon ECR..."
       - docker push $ECR_REPOSITORY:latest
+      - docker push $ECR_REPOSITORY:$(date +%Y%m%d%H%M%S)
       - echo "Build completed successfully."
 
