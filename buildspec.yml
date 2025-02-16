@@ -16,8 +16,6 @@ phases:
       - export IMAGE_TAG="${COMMIT_HASH}-${TIMESTAMP}"
       - echo "IMAGE_TAG set to:${IMAGE_TAG}"
 
-
-
   build:
     commands:
       - echo "Starting build phase..."
@@ -37,8 +35,24 @@ phases:
       - |
         test -s build/imagedefinitions.json || { echo "ERROR: imagedefinitions.json is empty or missing!" && exit 1; }
       - echo "Deployment artifacts successfully created!"
+      - echo "Updating ECS Service with the new task definition..."
+      - |
+        ECS_CLUSTER_NAME="ecs-node-cicd-cluster"
+        ECS_SERVICE_NAME="ecs-nodejs-service"
+        ECS_TASK_DEFINITION="nodejs-webapp-task-def"
+        IMAGE_URI="$ECR_REPOSITORY_URI:$IMAGE_TAG"
+        aws ecs register-task-definition \
+          --family "$ECS_TASK_DEFINITION" \
+          --container-definitions "[{\"name\":\"ecs-nodejs-container\",\"image\":\"$IMAGE_URI\"}]"
+        
+        aws ecs update-service \
+          --cluster "$ECS_CLUSTER_NAME" \
+          --service "$ECS_SERVICE_NAME" \
+          --task-definition "$ECS_TASK_DEFINITION"
+      - echo "ECS Service updated successfully!"
 
 artifacts:
   files:
     - "build/imagedefinitions.json"
   discard-paths: yes
+
