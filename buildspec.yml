@@ -1,37 +1,44 @@
 version: 0.2
 
 phases:
+  install:
+    commands:
+      - echo "No dependencies to install. Skipping install phase..."
+
   pre_build:
     commands:
-      - echo "Logging in to ECR..."
-      - |
-        aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REPOSITORY_URI"
-      - |
-        COMMIT_HASH=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
-        TIMESTAMP=$(date +%Y%m%d%H%M%S)
-        export IMAGE_TAG="${COMMIT_HASH}-${TIMESTAMP}"
-        echo "IMAGE_TAG set to: ${IMAGE_TAG}"
+      - echo "Starting pre-build phase..."
+      - echo "Logging in to AWS ECR..."
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REPOSITORY_URI"
+      - echo "Generating image tag..."
+      - COMMIT_HASH=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
+      - TIMESTAMP=$(date +%Y%m%d%H%M%S)
+      - export IMAGE_TAG="${COMMIT_HASH}-${TIMESTAMP}"
+      - echo "IMAGE_TAG set to:${IMAGE_TAG}"
+
+
 
   build:
     commands:
-      - echo "Skipping build phase for now..."
+      - echo "Starting build phase..."
+      - echo "Building and tagging Docker image..."
+      - docker build --pull --no-cache -t "$ECR_REPOSITORY_URI:$IMAGE_TAG" .
+      - echo "Build phase completed!"
 
   post_build:
     commands:
+      - echo "Starting post-build phase..."
+      - echo "Pushing Docker image to AWS ECR..."
+      - docker push "$ECR_REPOSITORY_URI:$IMAGE_TAG"
       - echo "Creating deployment artifacts..."
       - mkdir -p build
+      - printf '[{"name":"ecs-nodejs-container","imageUri":"%s"}]' "$ECR_REPOSITORY_URI:$IMAGE_TAG" > build/imagedefinitions.json
+      - echo "Verifying imagedefinitions.json..."
       - |
-        printf '[{"name":"ecs-nodejs-container","imageUri":"%s"}]' "$ECR_REPOSITORY_URI:$IMAGE_TAG" > build/imagedefinitions.json
-      - echo "Verifying artifact file..."
-      - ls -l build/
-      - |
-        if [ ! -s build/imagedefinitions.json ]; then
-          echo "ERROR: imagedefinitions.json is empty or missing!"
-          exit 1
-        fi
+        test -s build/imagedefinitions.json || { echo "ERROR: imagedefinitions.json is empty or missing!" && exit 1; }
+      - echo "Deployment artifacts successfully created!"
 
 artifacts:
   files:
     - "build/imagedefinitions.json"
   discard-paths: yes
-
