@@ -4,12 +4,13 @@ phases:
   pre_build:
     commands:
       - echo "Logging in to ECR..."
-      - aws ecr get-login-password --region $(env | grep AWS_DEFAULT_REGION | cut -d= -f2) | docker login --username AWS --password-stdin $(env | grep ECR_REPOSITORY_URI | cut -d= -f2)
-      - export COMMIT_HASH=$(echo $(env | grep CODEBUILD_RESOLVED_SOURCE_VERSION | cut -d= -f2) | cut -c 1-7)
-      - export TIMESTAMP=$(date +%Y%m%d%H%M%S)
-      - export IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP} && echo "IMAGE_TAG set to: ${IMAGE_TAG}"
-      - '[ -z "$IMAGE_TAG" ] && echo "ERROR: IMAGE_TAG is empty!" && exit 1'
-      - '[ -z "$(env | grep ECR_REPOSITORY_URI | cut -d= -f2)" ] && echo "ERROR: ECR_REPOSITORY_URI is empty!" && exit 1'
+      - |
+        aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REPOSITORY_URI"
+      - |
+        COMMIT_HASH=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
+        TIMESTAMP=$(date +%Y%m%d%H%M%S)
+        export IMAGE_TAG="${COMMIT_HASH}-${TIMESTAMP}"
+        echo "IMAGE_TAG set to: ${IMAGE_TAG}"
 
   build:
     commands:
@@ -19,24 +20,15 @@ phases:
     commands:
       - echo "Creating deployment artifacts..."
       - mkdir -p build
-      - printf '[{"name":"ecs-nodejs-container","imageUri":"%s"}]\n' "$(env | grep ECR_REPOSITORY_URI | cut -d= -f2):$IMAGE_TAG" > build/imagedefinitions.json
+      - |
+        printf '[{"name":"ecs-nodejs-container","imageUri":"%s"}]' "$ECR_REPOSITORY_URI:$IMAGE_TAG" > build/imagedefinitions.json
       - echo "Verifying artifact file..."
       - ls -l build/
-      - '[ ! -s build/imagedefinitions.json ] && echo "ERROR: imagedefinitions.json is empty or missing!" && exit 1'
-      - echo "Updating ECS Task Definition..."
-      - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $(env | grep ECS_TASK_DEFINITION | cut -d= -f2))
-      - echo "Modifying task definition..."
       - |
-        NEW_DEFINITION=$(echo "$TASK_DEFINITION" | jq '
-        .taskDefinition |
-        del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .registeredThrough) |
-        .containerDefinitions[0].image = "'"$(env | grep ECR_REPOSITORY_URI | cut -d= -f2):$IMAGE_TAG"'"
-        ')
-      - echo "Registering new task definition..."
-      - aws ecs register-task-definition --cli-input-json "$NEW_DEFINITION"
-      - echo "Triggering ECS deployment..."
-      - aws ecs update-service --cluster $(env | grep ECS_CLUSTER_NAME | cut -d= -f2) --service $(env | grep ECS_SERVICE_NAME | cut -d= -f2) --task-definition $(env | grep ECS_TASK_DEFINITION | cut -d= -f2) --force-new-deployment --region $(env | grep AWS_DEFAULT_REGION | cut -d= -f2)
-      - echo "Deployment triggered successfully!"
+        if [ ! -s build/imagedefinitions.json ]; then
+          echo "ERROR: imagedefinitions.json is empty or missing!"
+          exit 1
+        fi
 
 artifacts:
   files:
