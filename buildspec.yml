@@ -12,9 +12,14 @@ phases:
 
   post_build:
     commands:
-      - echo "Skipping post-build phase for now..."
+      - echo "Creating deployment artifacts..."
+      - mkdir -p build
+      - printf '[{"name":"ecs-nodejs-container","imageUri":"%s"}]' "$(env | grep ECR_REPOSITORY_URI | cut -d= -f2):$IMAGE_TAG" > build/imagedefinitions.json
+      - echo "Verifying artifact file..."
+      - ls -l build/
 
 artifacts:
   files:
-    - build/imagedefinitions.json
+    - "build/imagedefinitions.json"
   discard-paths: yes
+
