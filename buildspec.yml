@@ -1,24 +1,6 @@
-version: 0.2
-
-phases:
   pre_build:
     commands:
       - echo "Starting pre-build phase..."
-      - env | grep AWS_DEFAULT_REGION || echo "AWS_DEFAULT_REGION: NOT_SET"
-      - env | grep ECR_REPOSITORY_URI || echo "ECR_REPOSITORY_URI: NOT_SET"
-
-  build:
-    commands:
-      - echo "Building process starts here..."
-      - echo "Simulating build step"
-
-  post_build:
-    commands:
-      - echo "Post-build phase completed successfully!"
-      - echo "Pipeline setup is working fine."
-
-artifacts:
-  files:
-    - "**/*"
-  discard-paths: yes
+      - env | grep AWS_DEFAULT_REGION
+      - env | grep ECR_REPOSITORY_URI
 
