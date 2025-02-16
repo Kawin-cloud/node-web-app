@@ -1,20 +1,32 @@
 version: 0.2
-
 phases:
   pre_build:
     commands:
-      - echo "Setting AWS Credentials..."
-      - export AWS_SDK_LOAD_CONFIG=1
-      - aws configure list
       - echo "Logging in to ECR..."
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
-      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - >-
+        aws ecr get-login-password --region $(env | grep AWS_DEFAULT_REGION |
+        cut -d= -f2) | docker login --username AWS --password-stdin $(env | grep
+        ECR_REPOSITORY_URI | cut -d= -f2)
+      - >-
+        COMMIT_HASH=$(env | grep CODEBUILD_RESOLVED_SOURCE_VERSION | grep -o
+        '=[a-f0-9]*' | tr -d '=' | head -c 7)
       - TIMESTAMP=$(date +%Y%m%d%H%M%S)
-      - IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP}
-      - echo "Generated IMAGE_TAG: $IMAGE_TAG"
-
+      - 'IMAGE_TAG=${COMMIT_HASH}-${TIMESTAMP}'
+      - echo "Computed IMAGE_TAG: $IMAGE_TAG"
+      - env | grep AWS_DEFAULT_REGION
+      - env | grep ECR_REPOSITORY_URI
+      - env | grep CODEBUILD_RESOLVED_SOURCE_VERSION
+      - env | grep ECS_TASK_DEFINITION
+      - env | grep ECS_CLUSTER_NAME
+      - env | grep ECS_SERVICE_NAME
+  build:
+    commands:
+      - echo "Build phase placeholder..."
+  post_build:
+    commands:
+      - echo "Post-build phase placeholder..."
 artifacts:
   files:
-    - "**/*"
-  discard-paths: yes
+    - build/imagedefinitions.json
+  discard-paths: 'yes'
 
